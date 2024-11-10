@@ -34,41 +34,27 @@ def main():
 
     # 设置10%的子集采样器
     dataset_train_size = len(dataset_train)
-    dataset_clean_size = len(dataset_clean)
-    dataset_poisoned_size = len(dataset_poisoned)
 
     indices = list(range(dataset_train_size))
-    clean_indices = list(range(dataset_clean_size))
-    poisoned_indices = list(range(dataset_poisoned_size))
 
     np.random.shuffle(indices)
-    np.random.shuffle(clean_indices)
-    np.random.shuffle(poisoned_indices)
 
-    split = int(np.floor(0.05 * dataset_train_size))  # 10%
-    clean_split = int(np.floor(0.05 * dataset_clean_size))
-    poisoned_split = int(np.floor(0.05 * dataset_poisoned_size))
+    split = int(np.floor(0.1 * dataset_train_size))  # 10%
     train_indices = indices[:split]
 
     # 创建采样器
     train_sampler = SubsetRandomSampler(train_indices)
-    clean_sampler = SubsetRandomSampler(clean_indices[:clean_split])
-    poisoned_sampler = SubsetRandomSampler(poisoned_indices[:poisoned_split])
 
     # 修改 DataLoader
     data_loader_train = DataLoader(dataset_train, batch_size=args.batch_size, sampler=train_sampler,
                                    num_workers=args.num_workers)
-    data_loader_clean = DataLoader(dataset_clean, batch_size=args.batch_size, sampler=clean_sampler,
-                                   num_workers=args.num_workers)
-    data_loader_poisoned = DataLoader(dataset_poisoned, batch_size=args.batch_size, sampler=poisoned_sampler,
-                                      num_workers=args.num_workers)
 
     # data_loader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True,
     #                                num_workers=args.num_workers)
-    # data_loader_clean = DataLoader(dataset_clean, batch_size=args.batch_size, shuffle=True,
-    #                                num_workers=args.num_workers)
-    # data_loader_poisoned = DataLoader(dataset_poisoned, batch_size=args.batch_size, shuffle=True,
-    #                                   num_workers=args.num_workers)
+    data_loader_clean = DataLoader(dataset_clean, batch_size=args.batch_size, shuffle=True,
+                                   num_workers=args.num_workers)
+    data_loader_poisoned = DataLoader(dataset_poisoned, batch_size=args.batch_size, shuffle=True,
+                                      num_workers=args.num_workers)
 
     model = ResNet(num_classes=args.output_classes).to(device)
     criterion = torch.nn.CrossEntropyLoss()

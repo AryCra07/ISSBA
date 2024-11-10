@@ -38,7 +38,6 @@ class CIFAR10Poison(CIFAR10):
 
             target = torch.tensor(self.encoder.target_label)  # 使用编码后的标签
 
-
             # 转换 image 为张量并扩展维度（编码器需要 4 维张量）
             transform_to_tensor = transforms.ToTensor()
             image_tensor = transform_to_tensor(image).unsqueeze(0)

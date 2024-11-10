@@ -4,18 +4,23 @@ from tqdm import tqdm
 
 
 def train(data_loader_train, data_loader_clean, data_loader_poisoned, model, criterion, optimizer, epochs,
-          device, args):
+          device, args, accumulation_steps=4):
     model.train()
     stats = []
     for epoch in range(epochs):
         total_loss = 0
-        for batch_x, batch_y in tqdm(data_loader_train, desc=f"Epoch {epoch + 1}/{epochs}"):
+        for batch_idx, (batch_x, batch_y) in enumerate(tqdm(data_loader_train, desc=f"Epoch {epoch + 1}/{epochs}")):
             batch_x, batch_y = batch_x.to(device, non_blocking=True), batch_y.to(device, non_blocking=True)
             optimizer.zero_grad()
             output = model(batch_x)
             loss = criterion(output, batch_y)
             loss.backward()
-            optimizer.step()
+
+            # 梯度累积 - 每 accumulation_steps 次更新一次梯度
+            if (batch_idx + 1) % accumulation_steps == 0 or (batch_idx + 1) == len(data_loader_train):
+                optimizer.step()  # 更新参数
+                optimizer.zero_grad()  # 清空梯度
+
             total_loss += loss.item()
 
         epoch_loss = total_loss / len(data_loader_train)
@@ -59,25 +64,30 @@ def eval_attack(data_loader_clean, data_loader_poisoned, model, device):
 def eval(data_loader, model, device, print_perform=False):
     criterion = torch.nn.CrossEntropyLoss()
     model.eval()
-    y_true = []
-    y_predict = []
-    loss_sum = []
-    for batch_x, batch_y in tqdm(data_loader, desc="Evaluating"):
-        batch_x, batch_y = batch_x.to(device, non_blocking=True), batch_y.to(device, non_blocking=True)
-        output = model(batch_x)
-        loss = criterion(output, batch_y)
-        y_true.append(batch_y)
-        y_predict.append(output)
-        loss_sum.append(loss.item())
+    correct = 0
+    total = 0
+    loss_sum = 0.0
 
-    y_true = torch.cat(y_true, 0)
-    y_predict = torch.cat(y_predict, 0)
-    loss_sum = sum(loss_sum) / len(data_loader)
+    with torch.no_grad():  # 避免计算梯度，减少显存占用
+        for batch_x, batch_y in tqdm(data_loader, desc="Evaluating"):
+            batch_x, batch_y = batch_x.to(device, non_blocking=True), batch_y.to(device, non_blocking=True)
+            output = model(batch_x)
+            loss = criterion(output, batch_y)
+
+            # 累积损失和准确率
+            loss_sum += loss.item()
+            predictions = output.argmax(dim=1)
+            correct += (predictions == batch_y).sum().item()
+            total += batch_y.size(0)
+
+    # 计算平均损失和准确率
+    avg_loss = loss_sum / len(data_loader)
+    accuracy = correct / total
 
     if print_perform:
-        print(f"Average Loss: {loss_sum:.4f}")
+        print(f"Average Loss: {avg_loss:.4f}")
 
     return {
-        'acc': (y_true == y_predict.argmax(dim=1)).float().mean().item(),
-        'loss': loss_sum
+        'acc': accuracy,
+        'loss': avg_loss
     }

@@ -6,8 +6,7 @@ import torch
 
 def get_parser():
     parser = argparse.ArgumentParser(
-        description='Implementation of "Badnets: Identifying vulnerabilities in the machine learning model supply '
-                    'chain".')
+        description='Implementation of ISSBA.')
     parser.add_argument('--dataset', default='CIFAR10',
                         help='Which dataset to use (CIFAR10, default: CIFAR10)')
     parser.add_argument('--output_classes', default=10, type=int, help='number of the classification types')
